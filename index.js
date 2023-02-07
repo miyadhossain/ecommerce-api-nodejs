@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 4000;
 dbConnect();
 const authRouter = require("./routes/authRoute");
 const productRouter = require("./routes/productRoute");
+const categoryRouter = require("./routes/categoryRoute");
 
 app.use(morgan("dev"));
 app.use(bodyParser.json());
@@ -17,6 +18,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use("/api/user", authRouter);
 app.use("/api/product", productRouter);
+app.use("/api/category", categoryRouter);
 
 app.use(notFound);
 app.use(errorHandler);
