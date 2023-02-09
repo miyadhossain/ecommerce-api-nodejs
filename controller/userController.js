@@ -50,6 +50,36 @@ const loginUserController = asyncHandler(async (req, res) => {
   }
 });
 
+// Admin login
+const adminLoginController = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  // check if admin user exist or not
+  const findAdmin = await User.findOne({ email });
+  if (findAdmin.role !== "admin") throw new Error("Not authorized");
+  if (findAdmin && (await findAdmin.isPasswordMatched(password))) {
+    const refreshToken = generateRefreshToken(findAdmin?._id);
+    const updateUser = await User.findByIdAndUpdate(
+      findAdmin?.id,
+      { refreshToken: refreshToken },
+      { new: true }
+    );
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      maxAge: 72 * 60 * 60 * 1000,
+    });
+    res.json({
+      _id: findAdmin?._id,
+      firstName: findAdmin?.firstName,
+      lastName: findAdmin?.lastName,
+      email: findAdmin?.email,
+      mobile: findAdmin?.mobile,
+      token: generateToken(findAdmin?._id),
+    });
+  } else {
+    throw new Error("Invalid Credentials");
+  }
+});
+
 // Update a user
 const updateSingleUser = asyncHandler(async (req, res) => {
   const { _id } = req.user;
@@ -66,6 +96,25 @@ const updateSingleUser = asyncHandler(async (req, res) => {
       { new: true }
     );
     res.json(updateAUser);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+// Save address
+const saveAddress = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  validateMongoDbId(_id);
+
+  try {
+    const savedAddress = await User.findByIdAndUpdate(
+      _id,
+      {
+        address: req?.body?.address,
+      },
+      { new: true }
+    );
+    res.json(savedAddress);
   } catch (error) {
     throw new Error(error);
   }
@@ -141,6 +190,7 @@ const unblockUser = asyncHandler(async (req, res) => {
   }
 });
 
+// Refresh token
 const handleRefreshToken = asyncHandler(async (req, res) => {
   const { refreshToken } = req.cookies;
   if (!refreshToken) throw new Error("No refresh token in cookies");
@@ -231,6 +281,18 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.json(user);
 });
 
+// Get wishlist
+const getAllWishList = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  // Here populated but not wishlist model is exist
+  try {
+    const findUser = await User.findById(_id).populate("wishList");
+    res.json(findUser);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
 module.exports = {
   createUser,
   loginUserController,
@@ -245,4 +307,7 @@ module.exports = {
   updatePassword,
   forgetPasswordToken,
   resetPassword,
+  adminLoginController,
+  getAllWishList,
+  saveAddress,
 };
